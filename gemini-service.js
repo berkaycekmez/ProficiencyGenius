@@ -5,7 +5,7 @@ if (!process.env.GEMINI_API_KEY) {
 }
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 // DİKKAT: Modeli JSON komutlarına daha sadık olan gemini-pro olarak değiştiriyoruz.
-const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro-latest" });
 
 function extractJsonFromText(text) {
     const jsonMatch = text.match(/```json\n([\s\S]*?)\n```|({[\s\S]*?}|\[[\s\S]*?\])/);
