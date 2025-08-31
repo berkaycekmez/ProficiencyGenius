@@ -1,15 +1,11 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
-// API anahtarının Render'daki Ortam Değişkenlerinden (Environment Variables) gelip gelmediğini kontrol ediyoruz.
 if (!process.env.GEMINI_API_KEY) {
     throw new Error("GEMINI_API_KEY environment variable is not set!");
 }
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-
-// Ücretsiz katmanda en stabil ve sorunsuz çalışan modele geri dönüyoruz.
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-// Gemini'nin fazladan metin eklemesi durumunda JSON'ı ayıklamak için yardımcı fonksiyon.
 function extractJsonFromText(text) {
     const jsonMatch = text.match(/```json\n([\s\S]*?)\n```|({[\s\S]*?}|\[[\s\S]*?\])/);
     if (jsonMatch && (jsonMatch[1] || jsonMatch[2])) {
@@ -58,106 +54,24 @@ class GeminiService {
         }
     }
 
-    // --- SENİN ORİJİNAL, DETAYLI PROMPT'LARIN VE GÜÇLENDİRİLMİŞ TALİMATLARIN ---
-
     async generateGrammarQuestions(level, count = 25) {
-        const prompt = `Generate ${count} English grammar multiple-choice questions for ${level} level students.
-        
-        Requirements:
-        1. Progress from easier to harder within the ${level} level.
-        2. Each question should have exactly 4 options.
-        3. Cover diverse grammar topics appropriate for ${level}.
-
-        CRITICAL INSTRUCTION: Your entire response must be ONLY a single, valid JSON array of objects. Do not use markdown like \`\`\`. Do not add any text before or after the JSON array. Your response must start with '[' and end with ']'.
-        
-        Use this exact JSON structure for each object in the array:
-        {
-          "question": "Complete the sentence: She ___ to work every day.",
-          "options": ["go", "goes", "going", "gone"],
-          "correct": 1,
-          "topic": "Present Simple",
-          "level": "A1",
-          "explanation": "With third person singular subjects (she, he, it), we add 's' to the verb in present simple."
-        }`;
+        const prompt = `Generate ${count} English grammar multiple-choice questions for ${level} level students. Requirements: 1. Progress from easier to harder within the ${level} level. 2. Each question should have exactly 4 options (A, B, C, D). 3. Cover diverse grammar topics appropriate for ${level}. 4. Ensure questions are unique and realistic. 5. Include a variety of question types (fill-in-the-blank, error correction, sentence completion). CRITICAL: Return ONLY a valid JSON array with this exact structure: [ { "question": "...", "options": ["...", "...", "...", "..."], "correct": 1, "topic": "...", "level": "A1", "explanation": "..." } ]. Do not include markdown or any text outside the JSON array.`;
         return await this.makeRequest(prompt, 'json');
     }
 
     async generateReadingQuestions(level, count = 5) {
-        const prompt = `Generate ${count} English reading comprehension exercises for ${level} level students.
-        
-        Requirements:
-        1. Each exercise should have a passage and a set of questions.
-        2. Each question must have 4 multiple-choice options.
-        
-        CRITICAL INSTRUCTION: Your entire response must be ONLY a single, valid JSON array. Do not use markdown like \`\`\`. Do not add any text before or after the JSON array. Your response must start with '[' and end with ']'.
-        
-        Use this exact JSON structure:
-        [
-          {
-            "passage": "Text of the reading passage here...",
-            "questions": [
-              {
-                "question": "What is the main idea of the passage?",
-                "options": ["Option A", "Option B", "Option C", "Option D"],
-                "correct": 0,
-                "topic": "Main Idea",
-                "level": "${level}",
-                "explanation": "The passage primarily discusses..."
-              }
-            ]
-          }
-        ]`;
+        const prompt = `Generate ${count} English reading comprehension exercises for ${level} level students. Requirements: 1. Each exercise should have a passage (150-300 words for B1-C1). 2. Include multiple questions per passage, each with 4 multiple-choice options. 3. Questions should test: main idea, details, inference, vocabulary in context. CRITICAL: Return ONLY a valid JSON array with this exact structure: [ { "passage": "...", "questions": [ { "question": "...", "options": [...], "correct": 0, "topic": "...", "level": "${level}", "explanation": "..." } ] } ]. Do not include markdown or any text outside the JSON array.`;
         return await this.makeRequest(prompt, 'json');
     }
 
     async generateLearningReport(answers, questions) {
         const analysis = this.analyzeAnswers(answers, questions);
-        const prompt = `Analyze the provided English test results and generate a comprehensive learning report.
-        
-        Test Results Data:
-        - Score: ${analysis.correctAnswers}/${analysis.totalQuestions}
-        - Estimated Level: ${analysis.estimatedLevel}
-        - Mistakes by Topic: ${Object.entries(analysis.mistakesByTopic).map(([topic, data]) => `- ${topic}: ${data.wrong}/${data.total} incorrect`).join('\n')}
-
-        CRITICAL INSTRUCTION: Your entire response must be ONLY a single, valid JSON object. Do not use markdown like \`\`\`. Do not add any text before or after the JSON object. Your response must start with '{' and end with '}'.
-        
-        Use this exact JSON structure:
-        {
-          "level": "${analysis.estimatedLevel}",
-          "levelInfo": { 
-              "title": "A title for the ${analysis.estimatedLevel} level",
-              "description": "Detailed description of this proficiency level..."
-          },
-          "strengths": ["List of strengths based on performance"],
-          "weakAreas": [
-            {
-              "topic": "Topic name",
-              "performance": "weak/moderate/strong",
-              "explanation": "Why mistakes occurred in this area",
-              "recommendations": ["Specific study suggestions"]
-            }
-          ],
-          "overallRecommendations": ["General study advice"],
-          "nextSteps": ["What to focus on next"]
-        }`;
+        const prompt = `Based on this English test analysis, generate a comprehensive learning report: Test Results: - Total Score: ${analysis.correctAnswers}/${analysis.totalQuestions}, - Estimated Level: ${analysis.estimatedLevel}, Mistakes by Topic: ${Object.entries(analysis.mistakesByTopic).map(([topic, data]) => `- ${topic}: ${data.wrong}/${data.total} incorrect`).join('\n')}. CRITICAL: Generate a JSON response with: 1. Proficiency level assessment with detailed description. 2. Strengths and areas for improvement. 3. Specific recommendations for each weak topic. 4. Study suggestions and resources. Return ONLY valid JSON with this exact structure: { "level": "${analysis.estimatedLevel}", "levelInfo": { "title": "A title for the ${analysis.estimatedLevel} level", "description": "Detailed description..." }, "strengths": ["..."], "weakAreas": [ { "topic": "...", "performance": "weak/moderate/strong", "explanation": "...", "recommendations": ["..."] } ], "overallRecommendations": ["..."], "nextSteps": ["..."] }. Do NOT use markdown.`;
         return await this.makeRequest(prompt, 'json');
     }
 
     async translateToTurkish(reportText) {
-        const prompt = `Translate the following English learning report to Turkish.
-        
-        English Report:
-        ${reportText}
-
-        CRITICAL INSTRUCTION: Return ONLY a valid JSON object. Do not use markdown. The response MUST start with '{' and end with '}'.
-        
-        Use this exact JSON structure with translated values:
-        {
-          "strengths": ["..."],
-          "weakAreas": [ { "topic": "...", ... } ],
-          "overallRecommendations": ["..."],
-          "nextSteps": ["..."]
-        }`;
+        const prompt = `Translate the following English proficiency test learning report to Turkish. Maintain the same structure. English Report: ${reportText}. CRITICAL: Please return ONLY a valid JSON object with the same structure, but translated to Turkish: { "strengths": ["..."], "weakAreas": [ { "topic": "...", "explanation": "...", "recommendations": ["..."] } ], "overallRecommendations": ["..."], "nextSteps": ["..."] }. Do NOT use markdown ticks.`;
         return await this.makeRequest(prompt, 'json');
     }
 

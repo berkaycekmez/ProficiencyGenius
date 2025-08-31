@@ -5,20 +5,14 @@
 
 class EnglishTestApp {
     constructor() {
-        // Yeni mimariye uygun, doğru başlatma şekli
         this.evaluator = new Evaluator();
         this.testEngine = new TestEngine(this.evaluator);
-        
         this.currentScreen = 'homepage';
         this.testResults = null;
-        
         this.initializeEventListeners();
         this.showScreen('homepage');
     }
 
-    /**
-     * Tüm olay dinleyicilerini (event listener) başlatır.
-     */
     initializeEventListeners() {
         document.getElementById('startTestBtn').addEventListener('click', () => this.startTest());
         document.getElementById('nextBtn').addEventListener('click', () => this.nextQuestion());
@@ -33,9 +27,6 @@ class EnglishTestApp {
         document.addEventListener('keydown', this.handleKeyboardNavigation.bind(this));
     }
 
-    /**
-     * Belirli bir ekranı gösterir.
-     */
     showScreen(screenName) {
         document.querySelectorAll('.screen').forEach(screen => screen.classList.remove('active'));
         const targetScreen = document.getElementById(screenName);
@@ -45,9 +36,6 @@ class EnglishTestApp {
         }
     }
 
-    /**
-     * Testi başlatır.
-     */
     async startTest() {
         try {
             this.showScreen('loadingScreen');
@@ -191,17 +179,21 @@ class EnglishTestApp {
         this.showScreen('resultsScreen');
 
         const accuracy = this.testResults.accuracy || 0;
-        document.getElementById('finalScore').textContent = `${this.testResults.totalScore}/${this.testResults.totalQuestions}`;
-        document.getElementById('proficiencyLevel').textContent = this.testResults.level;
+        document.getElementById('finalScore').textContent = `${this.testResults.totalScore || 0}/${this.testResults.totalQuestions || 0}`;
+        document.getElementById('proficiencyLevel').textContent = this.testResults.level || 'N/A';
         document.getElementById('accuracyPercentage').textContent = `${accuracy.toFixed(0)}%`;
-
+        
         const report = this.testResults.learningReport;
-        if (report && report.levelDescription) {
-            document.getElementById('levelDescription').innerHTML = `<p>${report.levelDescription}</p>`;
+        if (report && report.levelInfo && report.levelInfo.description) {
+            document.getElementById('levelDescription').innerHTML = `<h6>${report.levelInfo.title || 'Seviye Değerlendirmesi'}</h6><p>${report.levelInfo.description}</p>`;
+        } else {
+            document.getElementById('levelDescription').innerHTML = `<p class="text-danger">AI destekli detaylı analiz üretilemedi.</p>`;
+        }
+        
+        if(report) {
             this.updateLearningReport(report);
         } else {
-            document.getElementById('levelDescription').innerHTML = `<p class="text-danger">AI-powered detailed analysis could not be generated at this time. Please try again later.</p>`;
-            document.getElementById('learningReport').innerHTML = '';
+            document.getElementById('learningReport').innerHTML = '<p class="text-muted">Detaylı öğrenme raporu mevcut değil.</p>';
         }
 
         const grammarTotal = this.testResults.grammarResults.total || 0;
@@ -219,7 +211,7 @@ class EnglishTestApp {
     
     updateLearningReport(report) {
         const reportContainer = document.getElementById('learningReport');
-        if (!report || !report.weakAreas) {
+        if (!report) {
              reportContainer.innerHTML = '';
              return;
         }
@@ -230,13 +222,13 @@ class EnglishTestApp {
         if (report.weakAreas && report.weakAreas.length > 0) {
             reportHTML += `<div class="mb-4"><h6 class="text-warning mb-3"><i class="fas fa-exclamation-triangle me-2"></i>Areas for Improvement</h6>`;
             report.weakAreas.forEach(area => {
-                reportHTML += `<div class.topic-analysis"><div class="topic-header"><span class="topic-name">${area.topic || 'General'}</span></div><p class="topic-explanation">${area.explanation || 'No specific explanation available.'}</p></div>`;
+                reportHTML += `<div class="topic-analysis"><div class="topic-header"><span class="topic-name">${area.topic || 'General'}</span></div><p class="topic-explanation">${area.explanation || 'No specific explanation available.'}</p></div>`;
             });
             reportHTML += '</div>';
         }
         reportContainer.innerHTML = reportHTML;
     }
-
+    
     restartTest() {
         this.testResults = null;
         this.startTest();
@@ -323,75 +315,21 @@ class EnglishTestApp {
         return textContent;
     }
 
-formatTurkishReport(translatedData) {
-    if (!translatedData) return '<p class="text-muted">Çeviri mevcut değil.</p>';
-
-    let reportHTML = '';
-
-    // Güçlü Yönler
-    if (translatedData.strengths && translatedData.strengths.length > 0) {
-        reportHTML += `
-            <div class="mb-4">
-                <h6 class="text-success mb-3"><i class="fas fa-check-circle me-2"></i>Güçlü Yönler</h6>
-                <ul class="list-unstyled">
-                    ${translatedData.strengths.map(strength => `<li class="mb-1">✓ ${strength}</li>`).join('')}
-                </ul>
-            </div>
-        `;
+    formatTurkishReport(translatedData) {
+        if (!translatedData) return '<p class="text-muted">Çeviri mevcut değil.</p>';
+        let reportHTML = '';
+        if (translatedData.strengths && translatedData.strengths.length > 0) {
+            reportHTML += `<div class="mb-4"><h6 class="text-success mb-3"><i class="fas fa-check-circle me-2"></i>Güçlü Yönler</h6><ul class="list-unstyled">${translatedData.strengths.map(s => `<li class="mb-1">✓ ${s}</li>`).join('')}</ul></div>`;
+        }
+        if (translatedData.weakAreas && translatedData.weakAreas.length > 0) {
+            reportHTML += `<div class="mb-4"><h6 class="text-warning mb-3"><i class="fas fa-exclamation-triangle me-2"></i>Geliştirilmesi Gereken Alanlar</h6>`;
+            translatedData.weakAreas.forEach(area => {
+                reportHTML += `<div class="topic-analysis"><div class="topic-header"><span class="topic-name">${area.topic || 'Belirtilmemiş Konu'}</span></div><p class="topic-explanation">${area.explanation || 'Detaylı açıklama mevcut değil.'}</p></div>`;
+            });
+            reportHTML += '</div>';
+        }
+        return reportHTML;
     }
-
-    // Geliştirilmesi Gereken Alanlar
-    if (translatedData.weakAreas && translatedData.weakAreas.length > 0) {
-        reportHTML += `
-            <div class="mb-4">
-                <h6 class="text-warning mb-3"><i class="fas fa-exclamation-triangle me-2"></i>Geliştirilmesi Gereken Alanlar</h6>
-        `;
-        
-        translatedData.weakAreas.forEach(area => {
-            reportHTML += `
-                <div class="topic-analysis">
-                    <div class="topic-header">
-                        <span class="topic-name">${area.topic}</span>
-                    </div>
-                    <p class="topic-explanation">${area.explanation}</p>
-                    ${area.recommendations ? `
-                        <ul class="mt-2">
-                            ${area.recommendations.map(rec => `<li>${rec}</li>`).join('')}
-                        </ul>
-                    ` : ''}
-                </div>
-            `;
-        });
-        
-        reportHTML += '</div>';
-    }
-
-    // Genel Tavsiyeler
-    if (translatedData.overallRecommendations && translatedData.overallRecommendations.length > 0) {
-        reportHTML += `
-            <div class="mb-4">
-                <h6 class="text-primary mb-3"><i class="fas fa-lightbulb me-2"></i>Çalışma Önerileri</h6>
-                <ul>
-                    ${translatedData.overallRecommendations.map(rec => `<li>${rec}</li>`).join('')}
-                </ul>
-            </div>
-        `;
-    }
-
-    // Sonraki Adımlar
-    if (translatedData.nextSteps && translatedData.nextSteps.length > 0) {
-        reportHTML += `
-            <div>
-                <h6 class="text-info mb-3"><i class="fas fa-arrow-right me-2"></i>Sonraki Adımlar</h6>
-                <ol>
-                    ${translatedData.nextSteps.map(step => `<li>${step}</li>`).join('')}
-                </ol>
-            </div>
-        `;
-    }
-
-    return reportHTML || '<p class="text-muted">Detaylı analiz mevcut değil.</p>';
-}
 
     showOfflineModeNotification() {
         this.updateLoadingText('Demo Mode Active', 'AI usage limit reached. A static demo test is being served.');
@@ -400,7 +338,8 @@ formatTurkishReport(translatedData) {
     showAILimitedNotification() {
         const levelDesc = document.getElementById('levelDescription');
         if (levelDesc && (this.testResults.isAILimited || this.testResults.isOfflineMode)) {
-           // ... (Bu fonksiyonu kendi orijinal kodundan alabilirsin)
+           // Bu fonksiyonu kendi orijinal kodundan alıp buraya yapıştırabilirsin.
+           // Genellikle bir uyarı mesajı gösterir.
         }
     }
 }
