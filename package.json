@@ -9,7 +9,7 @@
   "author": "Berkay Cekmez",
   "license": "ISC",
   "dependencies": {
-    "@google/generative-ai": "^1.16.0",
+    "@google/generative-ai": "latest",
     "cors": "^2.8.5",
     "express": "^4.19.2"
   }
