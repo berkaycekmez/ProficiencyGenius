@@ -3,7 +3,6 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 if (!process.env.GEMINI_API_KEY) {
     throw new Error("GEMINI_API_KEY environment variable is not set!");
 }
-
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
@@ -12,7 +11,7 @@ function extractJsonFromText(text) {
     if (jsonMatch && (jsonMatch[1] || jsonMatch[2])) {
         return jsonMatch[1] || jsonMatch[2];
     }
-    return null; // JSON bulunamazsa null döndür
+    return null;
 }
 
 class GeminiService {
@@ -27,9 +26,7 @@ class GeminiService {
             const response = result.response;
             let text = response.text();
 
-            if (!text) {
-                throw new Error('No response generated from Gemini API');
-            }
+            if (!text) throw new Error('No response generated from Gemini API');
 
             if (responseFormat === 'json') {
                 try {
@@ -41,13 +38,11 @@ class GeminiService {
                         try {
                             return JSON.parse(extractedJsonText);
                         } catch (finalError) {
-                            // SON HATA: Ayıklanmış metin bile JSON değilse, hatayı ve metni logla
                             console.error("!!! Could not parse even the extracted text. Gemini response was: !!!");
                             console.error(text);
                             throw new Error('Extracted text is not valid JSON.');
                         }
                     } else {
-                        // HATA: Metnin içinde hiç JSON bulunamadıysa, hatayı ve metni logla
                         console.error("!!! Could not find any JSON in the response. Gemini response was: !!!");
                         console.error(text);
                         throw new Error('No JSON found in response text.');
@@ -56,7 +51,6 @@ class GeminiService {
             }
             return text;
         } catch (error) {
-            // ... (diğer hata yönetimi aynı)
             console.error('Gemini API request failed:', error.message);
             if (error.message && (error.message.includes('quota') || error.message.includes('RATE_LIMIT_EXCEEDED'))) {
                 const quotaError = new Error('QUOTA_EXCEEDED');
@@ -67,47 +61,59 @@ class GeminiService {
         }
     }
 
-    async generateLearningReport(answers, questions) {
-        const analysis = this.analyzeAnswers(answers, questions);
-        
-        // --- DAHA KATI HALE GETİRİLMİŞ RAPOR İSTEĞİ (PROMPT) ---
-        const prompt = `Analyze the following English test results.
-        
-        Test Data:
-        - Score: ${analysis.correctAnswers}/${analysis.totalQuestions}
-        - Level: ${analysis.estimatedLevel}
-        - Mistakes: ${Object.entries(analysis.mistakesByTopic).map(([topic, data]) => `- ${topic}: ${data.wrong}/${data.total}`).join('\n')}
-
-        CRITICAL INSTRUCTION: Your entire response must be ONLY a single, valid JSON object.
-        Do NOT add any text before or after the JSON object.
-        Do NOT use markdown like \`\`\`json.
-        Your response must start with { and end with }.
-
-        Use this EXACT JSON structure:
-        {
-          "level": "${analysis.estimatedLevel}",
-          "levelDescription": "A detailed description of this proficiency level.",
-          "strengths": ["A list of strengths."],
-          "weakAreas": [
-            {
-              "topic": "Name of a weak topic",
-              "performance": "weak",
-              "explanation": "Explanation of the weakness.",
-              "recommendations": ["Recommendations for this topic."]
-            }
-          ],
-          "overallRecommendations": ["General study advice."],
-          "nextSteps": ["Actionable next steps."]
-        }`;
+    async generateGrammarQuestions(level, count = 25) {
+        const prompt = `Generate ${count} English grammar multiple-choice questions for ${level} level students. Return ONLY a valid JSON array. Do NOT include markdown ticks (\`\`\`) or any introductory text. The response MUST start with '[' and end with ']'. Exact structure: [ { "question": "...", "options": [...], "correct": 1, "topic": "...", "level": "...", "explanation": "..." } ]`;
         return await this.makeRequest(prompt, 'json');
     }
 
-    // --- Diğer fonksiyonlar (generateGrammarQuestions, vb.) aynı kalabilir ---
-    // ... (Önceki mesajdaki diğer fonksiyonların tamamı buraya gelecek) ...
-    async generateGrammarQuestions(level, count = 25) { /* ... aynı kod ... */ }
-    async generateReadingQuestions(level, count = 5) { /* ... aynı kod ... */ }
-    analyzeAnswers(answers, questions) { /* ... aynı kod ... */ }
-    async translateToTurkish(reportText) { /* ... aynı kod ... */ }
+    async generateReadingQuestions(level, count = 5) {
+        const prompt = `Generate ${count} English reading comprehension exercises for ${level} level students. Return ONLY a valid JSON array. Do NOT include markdown ticks (\`\`\`) or explanatory text. The response MUST start with '[' and end with ']'. Exact structure: [ { "passage": "...", "questions": [ { "question": "...", "options": [...], "correct": 0, ... } ] } ]`;
+        return await this.makeRequest(prompt, 'json');
+    }
+
+    async generateLearningReport(answers, questions) {
+        const analysis = this.analyzeAnswers(answers, questions);
+        const prompt = `Analyze the following English test results. Test Data: - Score: ${analysis.correctAnswers}/${analysis.totalQuestions}, Estimated Level: ${analysis.estimatedLevel}. Return ONLY a valid JSON object. Do NOT use markdown like \`\`\`json. Your response must start with { and end with }. Exact JSON structure: { "level": "...", "levelDescription": "...", "strengths": [...], "weakAreas": [ { "topic": "...", ... } ], "overallRecommendations": [...], "nextSteps": [...] }`;
+        return await this.makeRequest(prompt, 'json');
+    }
+
+    async translateToTurkish(reportText) {
+        const prompt = `Translate the following English learning report to Turkish. English Report: ${reportText}. Return ONLY a valid JSON object with the same structure, translated to Turkish. Do NOT use markdown ticks.`;
+        return await this.makeRequest(prompt, 'json');
+    }
+
+    analyzeAnswers(answers, questions) {
+        let correctAnswers = 0, grammarCorrect = 0, readingCorrect = 0, grammarTotal = 0, readingTotal = 0;
+        const mistakesByTopic = {}, mistakesByLevel = { A1: 0, A2: 0, B1: 0, B2: 0, C1: 0 };
+        questions.forEach((question, index) => {
+            const userAnswer = answers[index];
+            const isCorrect = userAnswer === question.correct;
+            const topic = question.topic || 'General';
+            const level = question.level || 'A1';
+            if (!mistakesByTopic[topic]) {
+                mistakesByTopic[topic] = { correct: 0, wrong: 0, total: 0 };
+            }
+            mistakesByTopic[topic].total++;
+            if (isCorrect) {
+                correctAnswers++;
+                mistakesByTopic[topic].correct++;
+                if (question.type === 'reading' || question.passage) readingCorrect++;
+                if (question.type === 'grammar' || !question.passage) grammarCorrect++;
+            } else {
+                mistakesByTopic[topic].wrong++;
+                mistakesByLevel[level]++;
+            }
+            if (question.type === 'reading' || question.passage) readingTotal++;
+            if (question.type === 'grammar' || !question.passage) grammarTotal++;
+        });
+        const accuracy = questions.length > 0 ? correctAnswers / questions.length : 0;
+        let estimatedLevel = 'A1';
+        if (accuracy >= 0.9) estimatedLevel = 'C1';
+        else if (accuracy >= 0.8) estimatedLevel = 'B2';
+        else if (accuracy >= 0.7) estimatedLevel = 'B1';
+        else if (accuracy >= 0.6) estimatedLevel = 'A2';
+        return { correctAnswers, totalQuestions: questions.length, grammarCorrect, grammarTotal, readingCorrect, readingTotal, mistakesByTopic, mistakesByLevel, estimatedLevel, accuracy };
+    }
 }
 
 module.exports = GeminiService;
