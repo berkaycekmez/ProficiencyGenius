@@ -323,10 +323,75 @@ class EnglishTestApp {
         return textContent;
     }
 
-    formatTurkishReport(translatedData) {
-        // ... (Bu fonksiyonu kendi orijinal kodundan alabilirsin)
-        return "Türkçe rapor burada gösterilecek.";
+formatTurkishReport(translatedData) {
+    if (!translatedData) return '<p class="text-muted">Çeviri mevcut değil.</p>';
+
+    let reportHTML = '';
+
+    // Güçlü Yönler
+    if (translatedData.strengths && translatedData.strengths.length > 0) {
+        reportHTML += `
+            <div class="mb-4">
+                <h6 class="text-success mb-3"><i class="fas fa-check-circle me-2"></i>Güçlü Yönler</h6>
+                <ul class="list-unstyled">
+                    ${translatedData.strengths.map(strength => `<li class="mb-1">✓ ${strength}</li>`).join('')}
+                </ul>
+            </div>
+        `;
     }
+
+    // Geliştirilmesi Gereken Alanlar
+    if (translatedData.weakAreas && translatedData.weakAreas.length > 0) {
+        reportHTML += `
+            <div class="mb-4">
+                <h6 class="text-warning mb-3"><i class="fas fa-exclamation-triangle me-2"></i>Geliştirilmesi Gereken Alanlar</h6>
+        `;
+        
+        translatedData.weakAreas.forEach(area => {
+            reportHTML += `
+                <div class="topic-analysis">
+                    <div class="topic-header">
+                        <span class="topic-name">${area.topic}</span>
+                    </div>
+                    <p class="topic-explanation">${area.explanation}</p>
+                    ${area.recommendations ? `
+                        <ul class="mt-2">
+                            ${area.recommendations.map(rec => `<li>${rec}</li>`).join('')}
+                        </ul>
+                    ` : ''}
+                </div>
+            `;
+        });
+        
+        reportHTML += '</div>';
+    }
+
+    // Genel Tavsiyeler
+    if (translatedData.overallRecommendations && translatedData.overallRecommendations.length > 0) {
+        reportHTML += `
+            <div class="mb-4">
+                <h6 class="text-primary mb-3"><i class="fas fa-lightbulb me-2"></i>Çalışma Önerileri</h6>
+                <ul>
+                    ${translatedData.overallRecommendations.map(rec => `<li>${rec}</li>`).join('')}
+                </ul>
+            </div>
+        `;
+    }
+
+    // Sonraki Adımlar
+    if (translatedData.nextSteps && translatedData.nextSteps.length > 0) {
+        reportHTML += `
+            <div>
+                <h6 class="text-info mb-3"><i class="fas fa-arrow-right me-2"></i>Sonraki Adımlar</h6>
+                <ol>
+                    ${translatedData.nextSteps.map(step => `<li>${step}</li>`).join('')}
+                </ol>
+            </div>
+        `;
+    }
+
+    return reportHTML || '<p class="text-muted">Detaylı analiz mevcut değil.</p>';
+}
 
     showOfflineModeNotification() {
         this.updateLoadingText('Demo Mode Active', 'AI usage limit reached. A static demo test is being served.');
