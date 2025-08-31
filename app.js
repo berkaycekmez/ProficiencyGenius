@@ -1,17 +1,19 @@
-// ----- TEST KODU BAŞLANGIÇ -----
 const express = require('express');
+const path = require('path'); // path modülünü tekrar ekledik
 const app = express();
 
-// Render'ın bize verdiği PORT'u kullan, eğer yoksa 3000'i kullan
 const PORT = process.env.PORT || 3000;
 
-// Sadece ana sayfaya gelen isteği karşıla ve basit bir yazı gönder
+// --- ŞÜPHELİ 1'İ GERİ EKLEDİK ---
+// Bu satırın 'public' klasöründeki dosyaları (css, js, html) sunmasını bekliyoruz.
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Test için hala basit bir ana sayfa yanıtı veriyoruz.
 app.get('/', (req, res) => {
-  res.send('Test Başarılı! Bu yazıyı görüyorsan sunucu çalışıyor demektir.');
+  res.send('Adım 1 Başarılı! Statik dosyalar sunuluyor.'); 
+  // Not: Bu aşamada siten tam çalışmayacak, sadece test ediyoruz.
 });
 
-// Sunucuyu dinlemeye başla
 app.listen(PORT, () => {
-  console.log(`Test sunucusu ${PORT} portunda başarıyla başlatıldı.`);
+  console.log(`Sunucu ${PORT} portunda başarıyla başlatıldı.`);
 });
-// ----- TEST KODU BİTİŞ -----
