@@ -4,7 +4,8 @@ if (!process.env.GEMINI_API_KEY) {
     throw new Error("GEMINI_API_KEY environment variable is not set!");
 }
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+// DİKKAT: Modeli JSON komutlarına daha sadık olan gemini-pro olarak değiştiriyoruz.
+const model = genAI.getGenerativeModel({ model: "gemini-pro" });
 
 function extractJsonFromText(text) {
     const jsonMatch = text.match(/```json\n([\s\S]*?)\n```|({[\s\S]*?}|\[[\s\S]*?\])/);
@@ -16,7 +17,7 @@ function extractJsonFromText(text) {
 
 class GeminiService {
     constructor() {
-        console.log("Backend Gemini Service (Replit Logic) has been initialized successfully.");
+        console.log("Backend Gemini Service has been initialized successfully.");
     }
 
     async makeRequest(prompt, responseFormat = 'text') {
@@ -26,7 +27,9 @@ class GeminiService {
             const response = result.response;
             let text = response.text();
 
-            if (!text) throw new Error('No response generated from Gemini API');
+            if (!text) {
+                throw new Error('No response generated from Gemini API');
+            }
 
             if (responseFormat === 'json') {
                 try {
@@ -38,11 +41,11 @@ class GeminiService {
                         try {
                             return JSON.parse(extractedJsonText);
                         } catch (finalError) {
-                            console.error("!!! Could not parse even the extracted text. Gemini response was: !!!", text);
+                            console.error("!!! FATAL ERROR: Could not parse even the extracted text. Gemini response was:", text);
                             throw new Error('Extracted text is not valid JSON.');
                         }
                     } else {
-                        console.error("!!! Could not find any JSON in the response. Gemini response was: !!!", text);
+                        console.error("!!! FATAL ERROR: Could not find any JSON in the response. Gemini response was:", text);
                         throw new Error('No JSON found in response text.');
                     }
                 }
@@ -50,80 +53,35 @@ class GeminiService {
             return text;
         } catch (error) {
             console.error('Gemini API request failed:', error.message);
-            if (error.message && (error.message.includes('quota') || error.message.includes('RATE_LIMIT_EXCEEDED'))) {
-                const quotaError = new Error('QUOTA_EXCEEDED');
-                quotaError.isQuotaError = true;
-                throw quotaError;
-            }
-            throw new Error(`Failed to generate content: ${error.message}`);
+            // Hataları zincirleme olarak yukarı fırlatıyoruz ki app.js yakalayabilsin.
+            throw error;
         }
     }
 
-    // --- REPLIT'İN OLUŞTURDUĞU ORİJİNAL VE DETAYLI PROMPT'LAR ---
+    // --- SENİN ORİJİNAL, DETAYLI PROMPT'LARIN İLE GÜNCELLENMİŞ FONKSİYONLAR ---
 
     async generateGrammarQuestions(level, count = 25) {
-        const prompt = `Generate ${count} English grammar multiple-choice questions for ${level} level students... (Orijinal uzun prompt metniniz buraya gelecek)`;
+        const prompt = `Generate ${count} English grammar multiple-choice questions for ${level} level students. Level characteristics: basic present tense, simple vocabulary, basic sentence structure. Requirements: 1. Progress from easier to harder within the ${level} level. 2. Each question should have exactly 4 options (A, B, C, D). 3. Cover diverse grammar topics appropriate for ${level}. 4. Ensure questions are unique and realistic. 5. Include a variety of question types (fill-in-the-blank, error correction, sentence completion). Your entire response must be ONLY a single, valid JSON array of objects. Do not use markdown. Start with '[' and end with ']'. Each object must have these exact keys: "question", "options" (an array of 4 strings), "correct" (the 0-indexed integer of the correct option), "topic", "level", "explanation".`;
         return await this.makeRequest(prompt, 'json');
     }
 
     async generateReadingQuestions(level, count = 5) {
-        const prompt = `Generate ${count} English reading comprehension exercises for ${level} level students... (Orijinal uzun prompt metniniz buraya gelecek)`;
+        const prompt = `Generate ${count} English reading comprehension exercises for ${level} level students. Level characteristics: moderately complex texts, varied topics, some unfamiliar vocabulary, clear main ideas. Requirements: 1. Each exercise should have a passage (150-300 words for B1-C1). 2. Include ${count} questions per passage, each with 4 multiple-choice options. 3. Passages should be interesting and relevant to real life. 4. Questions should test: main idea, details, inference, vocabulary in context. Your entire response must be ONLY a single, valid JSON array. Do not use markdown. Start with '[' and end with ']'. The structure must be: [ { "passage": "...", "questions": [ { "question": "...", "options": [...], "correct": 0, ... } ] } ]`;
         return await this.makeRequest(prompt, 'json');
     }
-    
-    // EN ÖNEMLİ KISIM: REPLIT'İN DETAYLI RAPOR PROMPT'U
+
     async generateLearningReport(answers, questions) {
         const analysis = this.analyzeAnswers(answers, questions);
-        
-        const prompt = `Based on this English test analysis, generate a comprehensive learning report:
-
-        Test Results:
-        - Total Score: ${analysis.correctAnswers}/${analysis.totalQuestions}
-        - Grammar Score: ${analysis.grammarCorrect}/${analysis.grammarTotal}
-        - Reading Score: ${analysis.readingCorrect}/${analysis.readingTotal}
-        - Estimated Level: ${analysis.estimatedLevel}
-
-        Mistakes by Topic:
-        ${Object.entries(analysis.mistakesByTopic).map(([topic, data]) => 
-            `- ${topic}: ${data.wrong}/${data.total} incorrect`
-        ).join('\n')}
-
-        Generate a JSON response with:
-        1. Proficiency level assessment with detailed description
-        2. Strengths and areas for improvement
-        3. Specific recommendations for each weak topic
-        4. Study suggestions and resources
-
-        Return ONLY valid JSON with this exact structure. Do NOT use markdown.
-        {
-          "level": "${analysis.estimatedLevel}",
-          "levelInfo": { 
-              "title": "A title for the ${analysis.estimatedLevel} level",
-              "description": "Detailed description of this proficiency level..."
-          },
-          "strengths": ["List of strengths based on performance"],
-          "weakAreas": [
-            {
-              "topic": "Topic name",
-              "performance": "weak/moderate/strong",
-              "explanation": "Why mistakes occurred in this area",
-              "recommendations": ["Specific study suggestions"]
-            }
-          ],
-          "overallRecommendations": ["General study advice"],
-          "nextSteps": ["What to focus on next"]
-        }`;
-
+        const prompt = `Based on this English test analysis, generate a comprehensive learning report: Test Results: - Total Score: ${analysis.correctAnswers}/${analysis.totalQuestions}, - Grammar Score: ${analysis.grammarCorrect}/${analysis.grammarTotal}, - Reading Score: ${analysis.readingCorrect}/${analysis.readingTotal}, - Estimated Level: ${analysis.estimatedLevel}, Mistakes by Topic: ${Object.entries(analysis.mistakesByTopic).map(([topic, data]) => `- ${topic}: ${data.wrong}/${data.total} incorrect`).join('\n')}. Generate a JSON response with: 1. Proficiency level assessment with detailed description. 2. Strengths and areas for improvement. 3. Specific recommendations for each weak topic. 4. Study suggestions and resources. Your entire response must be ONLY a single, valid JSON object. Do not use markdown. Start with '{' and end with '}'. The structure must be: { "level": "${analysis.estimatedLevel}", "levelInfo": { "title": "A title for the ${analysis.estimatedLevel} level", "description": "Detailed description..." }, "strengths": ["..."], "weakAreas": [ { "topic": "...", "performance": "...", "explanation": "...", "recommendations": ["..."] } ], "overallRecommendations": ["..."], "nextSteps": ["..."] }`;
         return await this.makeRequest(prompt, 'json');
     }
 
     async translateToTurkish(reportText) {
-        const prompt = `Translate the following English proficiency test learning report to Turkish... (Orijinal uzun prompt metniniz buraya gelecek)`;
+        const prompt = `Translate the following English proficiency test learning report to Turkish. Maintain the same structure. English Report: ${reportText}. Please return ONLY a valid JSON object with the same structure, but translated to Turkish. Do NOT use markdown ticks.`;
         return await this.makeRequest(prompt, 'json');
     }
 
     analyzeAnswers(answers, questions) {
-        // ... (Bu fonksiyonun içeriği tamamen aynı kalıyor)
         let correctAnswers = 0, grammarCorrect = 0, readingCorrect = 0, grammarTotal = 0, readingTotal = 0;
         const mistakesByTopic = {}, mistakesByLevel = { A1: 0, A2: 0, B1: 0, B2: 0, C1: 0 };
         questions.forEach((question, index) => {
@@ -157,4 +115,5 @@ class GeminiService {
     }
 }
 
+// Bu satır, bu dosyadaki GeminiService sınıfını app.js'in kullanabilmesi için dışarıya açar.
 module.exports = GeminiService;
