@@ -1,12 +1,15 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
+// API anahtarının Render'daki Ortam Değişkenlerinden (Environment Variables) gelip gelmediğini kontrol ediyoruz.
 if (!process.env.GEMINI_API_KEY) {
     throw new Error("GEMINI_API_KEY environment variable is not set!");
 }
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-// DİKKAT: Modeli JSON komutlarına daha sadık olan gemini-pro olarak değiştiriyoruz.
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro-latest" });
 
+// Ücretsiz katmanda en stabil ve sorunsuz çalışan modele geri dönüyoruz.
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+// Gemini'nin fazladan metin eklemesi durumunda JSON'ı ayıklamak için yardımcı fonksiyon.
 function extractJsonFromText(text) {
     const jsonMatch = text.match(/```json\n([\s\S]*?)\n```|({[\s\S]*?}|\[[\s\S]*?\])/);
     if (jsonMatch && (jsonMatch[1] || jsonMatch[2])) {
@@ -17,7 +20,7 @@ function extractJsonFromText(text) {
 
 class GeminiService {
     constructor() {
-        console.log("Backend Gemini Service has been initialized successfully.");
+        console.log("Backend Gemini Service has been initialized successfully with gemini-1.5-flash.");
     }
 
     async makeRequest(prompt, responseFormat = 'text') {
@@ -27,9 +30,7 @@ class GeminiService {
             const response = result.response;
             let text = response.text();
 
-            if (!text) {
-                throw new Error('No response generated from Gemini API');
-            }
+            if (!text) throw new Error('No response generated from Gemini API');
 
             if (responseFormat === 'json') {
                 try {
@@ -53,42 +54,120 @@ class GeminiService {
             return text;
         } catch (error) {
             console.error('Gemini API request failed:', error.message);
-            // Hataları zincirleme olarak yukarı fırlatıyoruz ki app.js yakalayabilsin.
             throw error;
         }
     }
 
-    // --- SENİN ORİJİNAL, DETAYLI PROMPT'LARIN İLE GÜNCELLENMİŞ FONKSİYONLAR ---
+    // --- SENİN ORİJİNAL, DETAYLI PROMPT'LARIN VE GÜÇLENDİRİLMİŞ TALİMATLARIN ---
 
     async generateGrammarQuestions(level, count = 25) {
-        const prompt = `Generate ${count} English grammar multiple-choice questions for ${level} level students. Level characteristics: basic present tense, simple vocabulary, basic sentence structure. Requirements: 1. Progress from easier to harder within the ${level} level. 2. Each question should have exactly 4 options (A, B, C, D). 3. Cover diverse grammar topics appropriate for ${level}. 4. Ensure questions are unique and realistic. 5. Include a variety of question types (fill-in-the-blank, error correction, sentence completion). Your entire response must be ONLY a single, valid JSON array of objects. Do not use markdown. Start with '[' and end with ']'. Each object must have these exact keys: "question", "options" (an array of 4 strings), "correct" (the 0-indexed integer of the correct option), "topic", "level", "explanation".`;
+        const prompt = `Generate ${count} English grammar multiple-choice questions for ${level} level students.
+        
+        Requirements:
+        1. Progress from easier to harder within the ${level} level.
+        2. Each question should have exactly 4 options.
+        3. Cover diverse grammar topics appropriate for ${level}.
+
+        CRITICAL INSTRUCTION: Your entire response must be ONLY a single, valid JSON array of objects. Do not use markdown like \`\`\`. Do not add any text before or after the JSON array. Your response must start with '[' and end with ']'.
+        
+        Use this exact JSON structure for each object in the array:
+        {
+          "question": "Complete the sentence: She ___ to work every day.",
+          "options": ["go", "goes", "going", "gone"],
+          "correct": 1,
+          "topic": "Present Simple",
+          "level": "A1",
+          "explanation": "With third person singular subjects (she, he, it), we add 's' to the verb in present simple."
+        }`;
         return await this.makeRequest(prompt, 'json');
     }
 
     async generateReadingQuestions(level, count = 5) {
-        const prompt = `Generate ${count} English reading comprehension exercises for ${level} level students. Level characteristics: moderately complex texts, varied topics, some unfamiliar vocabulary, clear main ideas. Requirements: 1. Each exercise should have a passage (150-300 words for B1-C1). 2. Include ${count} questions per passage, each with 4 multiple-choice options. 3. Passages should be interesting and relevant to real life. 4. Questions should test: main idea, details, inference, vocabulary in context. Your entire response must be ONLY a single, valid JSON array. Do not use markdown. Start with '[' and end with ']'. The structure must be: [ { "passage": "...", "questions": [ { "question": "...", "options": [...], "correct": 0, ... } ] } ]`;
+        const prompt = `Generate ${count} English reading comprehension exercises for ${level} level students.
+        
+        Requirements:
+        1. Each exercise should have a passage and a set of questions.
+        2. Each question must have 4 multiple-choice options.
+        
+        CRITICAL INSTRUCTION: Your entire response must be ONLY a single, valid JSON array. Do not use markdown like \`\`\`. Do not add any text before or after the JSON array. Your response must start with '[' and end with ']'.
+        
+        Use this exact JSON structure:
+        [
+          {
+            "passage": "Text of the reading passage here...",
+            "questions": [
+              {
+                "question": "What is the main idea of the passage?",
+                "options": ["Option A", "Option B", "Option C", "Option D"],
+                "correct": 0,
+                "topic": "Main Idea",
+                "level": "${level}",
+                "explanation": "The passage primarily discusses..."
+              }
+            ]
+          }
+        ]`;
         return await this.makeRequest(prompt, 'json');
     }
 
     async generateLearningReport(answers, questions) {
         const analysis = this.analyzeAnswers(answers, questions);
-        const prompt = `Based on this English test analysis, generate a comprehensive learning report: Test Results: - Total Score: ${analysis.correctAnswers}/${analysis.totalQuestions}, - Grammar Score: ${analysis.grammarCorrect}/${analysis.grammarTotal}, - Reading Score: ${analysis.readingCorrect}/${analysis.readingTotal}, - Estimated Level: ${analysis.estimatedLevel}, Mistakes by Topic: ${Object.entries(analysis.mistakesByTopic).map(([topic, data]) => `- ${topic}: ${data.wrong}/${data.total} incorrect`).join('\n')}. Generate a JSON response with: 1. Proficiency level assessment with detailed description. 2. Strengths and areas for improvement. 3. Specific recommendations for each weak topic. 4. Study suggestions and resources. Your entire response must be ONLY a single, valid JSON object. Do not use markdown. Start with '{' and end with '}'. The structure must be: { "level": "${analysis.estimatedLevel}", "levelInfo": { "title": "A title for the ${analysis.estimatedLevel} level", "description": "Detailed description..." }, "strengths": ["..."], "weakAreas": [ { "topic": "...", "performance": "...", "explanation": "...", "recommendations": ["..."] } ], "overallRecommendations": ["..."], "nextSteps": ["..."] }`;
+        const prompt = `Analyze the provided English test results and generate a comprehensive learning report.
+        
+        Test Results Data:
+        - Score: ${analysis.correctAnswers}/${analysis.totalQuestions}
+        - Estimated Level: ${analysis.estimatedLevel}
+        - Mistakes by Topic: ${Object.entries(analysis.mistakesByTopic).map(([topic, data]) => `- ${topic}: ${data.wrong}/${data.total} incorrect`).join('\n')}
+
+        CRITICAL INSTRUCTION: Your entire response must be ONLY a single, valid JSON object. Do not use markdown like \`\`\`. Do not add any text before or after the JSON object. Your response must start with '{' and end with '}'.
+        
+        Use this exact JSON structure:
+        {
+          "level": "${analysis.estimatedLevel}",
+          "levelInfo": { 
+              "title": "A title for the ${analysis.estimatedLevel} level",
+              "description": "Detailed description of this proficiency level..."
+          },
+          "strengths": ["List of strengths based on performance"],
+          "weakAreas": [
+            {
+              "topic": "Topic name",
+              "performance": "weak/moderate/strong",
+              "explanation": "Why mistakes occurred in this area",
+              "recommendations": ["Specific study suggestions"]
+            }
+          ],
+          "overallRecommendations": ["General study advice"],
+          "nextSteps": ["What to focus on next"]
+        }`;
         return await this.makeRequest(prompt, 'json');
     }
 
     async translateToTurkish(reportText) {
-        const prompt = `Translate the following English proficiency test learning report to Turkish. Maintain the same structure. English Report: ${reportText}. Please return ONLY a valid JSON object with the same structure, but translated to Turkish. Do NOT use markdown ticks.`;
+        const prompt = `Translate the following English learning report to Turkish.
+        
+        English Report:
+        ${reportText}
+
+        CRITICAL INSTRUCTION: Return ONLY a valid JSON object. Do not use markdown. The response MUST start with '{' and end with '}'.
+        
+        Use this exact JSON structure with translated values:
+        {
+          "strengths": ["..."],
+          "weakAreas": [ { "topic": "...", ... } ],
+          "overallRecommendations": ["..."],
+          "nextSteps": ["..."]
+        }`;
         return await this.makeRequest(prompt, 'json');
     }
 
     analyzeAnswers(answers, questions) {
         let correctAnswers = 0, grammarCorrect = 0, readingCorrect = 0, grammarTotal = 0, readingTotal = 0;
-        const mistakesByTopic = {}, mistakesByLevel = { A1: 0, A2: 0, B1: 0, B2: 0, C1: 0 };
+        const mistakesByTopic = {};
         questions.forEach((question, index) => {
             const userAnswer = answers[index];
             const isCorrect = userAnswer === question.correct;
             const topic = question.topic || 'General';
-            const level = question.level || 'A1';
             if (!mistakesByTopic[topic]) {
                 mistakesByTopic[topic] = { correct: 0, wrong: 0, total: 0 };
             }
@@ -100,7 +179,6 @@ class GeminiService {
                 if (question.type === 'grammar' || !question.passage) grammarCorrect++;
             } else {
                 mistakesByTopic[topic].wrong++;
-                mistakesByLevel[level]++;
             }
             if (question.type === 'reading' || question.passage) readingTotal++;
             if (question.type === 'grammar' || !question.passage) grammarTotal++;
@@ -111,9 +189,8 @@ class GeminiService {
         else if (accuracy >= 80) estimatedLevel = 'B2';
         else if (accuracy >= 70) estimatedLevel = 'B1';
         else if (accuracy >= 60) estimatedLevel = 'A2';
-        return { correctAnswers, totalQuestions: questions.length, grammarCorrect, grammarTotal, readingCorrect, readingTotal, mistakesByTopic, mistakesByLevel, estimatedLevel, accuracy };
+        return { correctAnswers, totalQuestions: questions.length, grammarCorrect, grammarTotal, readingCorrect, readingTotal, mistakesByTopic, estimatedLevel, accuracy };
     }
 }
 
-// Bu satır, bu dosyadaki GeminiService sınıfını app.js'in kullanabilmesi için dışarıya açar.
 module.exports = GeminiService;
