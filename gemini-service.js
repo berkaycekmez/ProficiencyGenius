@@ -1,6 +1,5 @@
 // Google'ın sunucu tarafı kütüphanesini içeri aktarıyoruz
-const { GoogleGenerativeAI } = require("@google/genai");
-
+const { GoogleGenerativeAI } = require("@google/generative-ai"); // BU SATIR DOĞRU
 // Render'da ayarladığın API anahtarını güvenli bir şekilde alıyoruz
 if (!process.env.GEMINI_API_KEY) {
     throw new Error("GEMINI_API_KEY environment variable is not set!");
