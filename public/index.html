@@ -10,7 +10,6 @@
 </head>
 <body>
     <div id="app">
-        <!-- Homepage -->
         <div id="homepage" class="screen active">
             <div class="container-fluid vh-100 d-flex align-items-center justify-content-center">
                 <div class="text-center">
@@ -29,7 +28,6 @@
             </div>
         </div>
 
-        <!-- Loading Screen -->
         <div id="loadingScreen" class="screen">
             <div class="container-fluid vh-100 d-flex align-items-center justify-content-center">
                 <div class="text-center">
@@ -46,10 +44,8 @@
             </div>
         </div>
 
-        <!-- Test Interface -->
         <div id="testScreen" class="screen">
             <div class="container-fluid">
-                <!-- Header -->
                 <nav class="navbar navbar-expand-lg navbar-light bg-light border-bottom">
                     <div class="container">
                         <span class="navbar-brand mb-0 h1">
@@ -70,35 +66,28 @@
                     </div>
                 </nav>
 
-                <!-- Question Content -->
                 <div class="container py-4">
                     <div class="row justify-content-center">
                         <div class="col-lg-8">
                             <div class="card shadow-sm">
                                 <div class="card-body p-4">
-                                    <!-- Question Type Badge -->
                                     <div class="mb-3">
                                         <span id="questionTypeBadge" class="badge bg-secondary">Grammar</span>
                                         <span id="difficultyBadge" class="badge bg-info ms-2">A1</span>
                                     </div>
 
-                                    <!-- Reading Passage (for comprehension questions) -->
                                     <div id="readingPassage" class="reading-passage mb-4" style="display: none;">
                                         <h5>Reading Passage:</h5>
                                         <div id="passageText" class="border p-3 bg-light rounded"></div>
                                     </div>
 
-                                    <!-- Question -->
                                     <div id="questionContainer">
                                         <h4 id="questionText" class="mb-4"></h4>
                                         
-                                        <!-- Multiple Choice Options -->
                                         <div id="optionsContainer" class="d-grid gap-2">
-                                            <!-- Options will be dynamically generated -->
-                                        </div>
+                                            </div>
                                     </div>
 
-                                    <!-- Navigation -->
                                     <div class="d-flex justify-content-between mt-4 pt-3 border-top">
                                         <button id="prevBtn" class="btn btn-outline-secondary" disabled>
                                             <i class="fas fa-arrow-left me-2"></i>Previous
@@ -118,12 +107,10 @@
             </div>
         </div>
 
-        <!-- Results Screen -->
         <div id="resultsScreen" class="screen">
             <div class="container py-5">
                 <div class="row justify-content-center">
                     <div class="col-lg-8">
-                        <!-- Score Summary -->
                         <div class="card shadow-sm mb-4">
                             <div class="card-body text-center p-5">
                                 <div class="mb-4">
@@ -145,12 +132,10 @@
                                     </div>
                                 </div>
                                 <div id="levelDescription" class="alert alert-info">
-                                    <!-- Level description will be populated -->
-                                </div>
+                                    </div>
                             </div>
                         </div>
 
-                        <!-- Detailed Analysis -->
                         <div class="card shadow-sm mb-4">
                             <div class="card-header">
                                 <h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Performance Analysis</h5>
@@ -175,7 +160,6 @@
                             </div>
                         </div>
 
-                        <!-- Learning Report -->
                         <div class="card shadow-sm mb-4">
                             <div class="card-header d-flex justify-content-between align-items-center">
                                 <h5 class="mb-0"><i class="fas fa-lightbulb me-2"></i>Learning Report</h5>
@@ -185,15 +169,12 @@
                             </div>
                             <div class="card-body">
                                 <div id="learningReport">
-                                    <!-- Learning report will be populated -->
-                                </div>
+                                    </div>
                                 <div id="turkishLearningReport" style="display: none;">
-                                    <!-- Turkish translation will be populated here -->
-                                </div>
+                                    </div>
                             </div>
                         </div>
 
-                        <!-- Actions -->
                         <div class="text-center">
                             <button id="tryAgainBtn" class="btn btn-primary btn-lg me-3">
                                 <i class="fas fa-redo me-2"></i>Try Again
@@ -207,7 +188,6 @@
             </div>
         </div>
 
-        <!-- Error Screen -->
         <div id="errorScreen" class="screen">
             <div class="container-fluid vh-100 d-flex align-items-center justify-content-center">
                 <div class="text-center">
@@ -230,27 +210,15 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        // API key configuration
-        // Priority: URL parameter > localStorage > fallback
-        const urlParams = new URLSearchParams(window.location.search);
-        const apiKeyFromUrl = urlParams.get('apiKey');
-        const apiKeyFromStorage = localStorage.getItem('gemini_api_key');
-        
-        if (apiKeyFromUrl) {
-            window.GEMINI_API_KEY = apiKeyFromUrl;
-            localStorage.setItem('gemini_api_key', apiKeyFromUrl);
-        } else if (apiKeyFromStorage) {
-            window.GEMINI_API_KEY = apiKeyFromStorage;
-        } else {
-            // For development/demo - replace with your actual key
-            window.GEMINI_API_KEY = 'AIzaSyA29yB-NhWWJdcrf6dkl5Xeye_3VzJlSIY';
-        }
-    </script>
+    
     <script src="static-test.js"></script>
-    <script src="gemini-service.js"></script>
     <script src="evaluation.js"></script>
+    
+    <script src="api-client.js"></script>
+    
     <script src="test-engine.js"></script>
-    <script src="app.js"></script>
+    
+    <script src="script.js"></script>
+    
 </body>
 </html>
