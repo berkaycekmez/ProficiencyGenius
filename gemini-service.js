@@ -16,10 +16,11 @@ function extractJsonFromText(text) {
 
 class GeminiService {
     constructor() {
-        console.log("Backend Gemini Service has been initialized successfully with gemini-1.5-flash.");
+        console.log("Backend Gemini Service (Intelligent Report Version) has been initialized.");
     }
 
     async makeRequest(prompt, responseFormat = 'text') {
+        // ... (Bu fonksiyonun içi bir önceki mesajdakiyle tamamen aynı)
         try {
             const generationConfig = responseFormat === 'json' ? { responseMimeType: "application/json" } : {};
             const result = await model.generateContent(prompt, generationConfig);
@@ -54,24 +55,62 @@ class GeminiService {
         }
     }
 
-    async generateGrammarQuestions(level, count = 25) {
-        const prompt = `Generate ${count} English grammar multiple-choice questions for ${level} level students. Requirements: 1. Progress from easier to harder within the ${level} level. 2. Each question should have exactly 4 options (A, B, C, D). 3. Cover diverse grammar topics appropriate for ${level}. 4. Ensure questions are unique and realistic. 5. Include a variety of question types (fill-in-the-blank, error correction, sentence completion). CRITICAL: Return ONLY a valid JSON array with this exact structure: [ { "question": "...", "options": ["...", "...", "...", "..."], "correct": 1, "topic": "...", "level": "A1", "explanation": "..." } ]. Do not include markdown or any text outside the JSON array.`;
-        return await this.makeRequest(prompt, 'json');
-    }
-
-    async generateReadingQuestions(level, count = 5) {
-        const prompt = `Generate ${count} English reading comprehension exercises for ${level} level students. Requirements: 1. Each exercise should have a passage (150-300 words for B1-C1). 2. Include multiple questions per passage, each with 4 multiple-choice options. 3. Questions should test: main idea, details, inference, vocabulary in context. CRITICAL: Return ONLY a valid JSON array with this exact structure: [ { "passage": "...", "questions": [ { "question": "...", "options": [...], "correct": 0, "topic": "...", "level": "${level}", "explanation": "..." } ] } ]. Do not include markdown or any text outside the JSON array.`;
-        return await this.makeRequest(prompt, 'json');
-    }
-
+    // --- EN ÖNEMLİ DEĞİŞİKLİK: REPLIT'İN AKILLI RAPOR PROMPT'U ---
     async generateLearningReport(answers, questions) {
         const analysis = this.analyzeAnswers(answers, questions);
-        const prompt = `Based on this English test analysis, generate a comprehensive learning report: Test Results: - Total Score: ${analysis.correctAnswers}/${analysis.totalQuestions}, - Estimated Level: ${analysis.estimatedLevel}, Mistakes by Topic: ${Object.entries(analysis.mistakesByTopic).map(([topic, data]) => `- ${topic}: ${data.wrong}/${data.total} incorrect`).join('\n')}. CRITICAL: Generate a JSON response with: 1. Proficiency level assessment with detailed description. 2. Strengths and areas for improvement. 3. Specific recommendations for each weak topic. 4. Study suggestions and resources. Return ONLY valid JSON with this exact structure: { "level": "${analysis.estimatedLevel}", "levelInfo": { "title": "A title for the ${analysis.estimatedLevel} level", "description": "Detailed description..." }, "strengths": ["..."], "weakAreas": [ { "topic": "...", "performance": "weak/moderate/strong", "explanation": "...", "recommendations": ["..."] } ], "overallRecommendations": ["..."], "nextSteps": ["..."] }. Do NOT use markdown.`;
+        
+        // Bu prompt, AI'ı bir öğretmen gibi davranmaya ve detaylı, eğitici geri bildirimler vermeye zorlar.
+        const prompt = `
+        Act as an expert English language tutor. Analyze the following English test results for a student.
+
+        Test Results Data:
+        - Score: ${analysis.correctAnswers}/${analysis.totalQuestions}
+        - Estimated Level: ${analysis.estimatedLevel}
+        - Mistakes by Topic: ${Object.entries(analysis.mistakesByTopic).map(([topic, data]) => `- ${topic}: ${data.wrong}/${data.total} incorrect`).join('\n')}
+
+        CRITICAL INSTRUCTION:
+        Your entire response must be ONLY a single, valid JSON object. Do not add any text before or after the JSON object. Do not use markdown like \`\`\`. Your response must start with '{' and end with '}'.
+
+        For each "weakAreas" topic, you MUST provide a helpful, educational "explanation" that includes a mini-lesson on the grammar rule, and a list of "recommendations".
+
+        Use this EXACT JSON structure:
+        {
+          "level": "${analysis.estimatedLevel}",
+          "levelInfo": { 
+              "title": "A title for the ${analysis.estimatedLevel} level (e.g., 'Intermediate', 'Beginner')",
+              "description": "A detailed, encouraging description of this proficiency level and what it means."
+          },
+          "strengths": ["A list of 1-3 key strengths based on the student's correct answers."],
+          "weakAreas": [
+            {
+              "topic": "The name of a weak topic (e.g., 'Present Perfect Tense')",
+              "performance": "weak",
+              "explanation": "A mini-lesson explaining the rule for this topic. For example: 'The present perfect tense is used to talk about past actions that have a connection to the present. It's formed with have/has + past participle. You made mistakes where you used the simple past instead.'",
+              "recommendations": ["A list of 1-2 actionable recommendations, e.g., 'Practice forming sentences with have/has + verb.', 'Review the past participles of irregular verbs.']
+            }
+          ],
+          "overallRecommendations": ["A list of general study advice for a student at this level."],
+          "nextSteps": ["A list of actionable next steps for the student to take."]
+        }`;
+        
+        return await this.makeRequest(prompt, 'json');
+    }
+
+    // ... (Diğer tüm fonksiyonlar: generateGrammarQuestions, analyzeAnswers, vb. aynı kalabilir)
+    // ... Onları tekrar ekleyerek kodu tamamlıyorum.
+    
+    async generateGrammarQuestions(level, count = 5) {
+        const prompt = `Generate ${count} English grammar multiple-choice questions for the ${level} CEFR level. Your entire response must be ONLY a single, valid JSON array of objects. Do not use markdown. Start with '[' and end with ']'. Each object must have these exact keys: "question", "options" (an array of 4 strings), "correct" (the 0-indexed integer of the correct option), "topic", "level", "explanation".`;
+        return await this.makeRequest(prompt, 'json');
+    }
+
+    async generateReadingQuestions(level, count = 1) {
+        const prompt = `Generate ${count} English reading comprehension exercise for the ${level} CEFR level. Your entire response must be ONLY a single, valid JSON array. Do not use markdown. Start with '[' and end with ']'. The structure must be: [ { "passage": "...", "questions": [ { "question": "...", "options": [...], "correct": 0, ... } ] } ]`;
         return await this.makeRequest(prompt, 'json');
     }
 
     async translateToTurkish(reportText) {
-        const prompt = `Translate the following English proficiency test learning report to Turkish. Maintain the same structure. English Report: ${reportText}. CRITICAL: Please return ONLY a valid JSON object with the same structure, but translated to Turkish: { "strengths": ["..."], "weakAreas": [ { "topic": "...", "explanation": "...", "recommendations": ["..."] } ], "overallRecommendations": ["..."], "nextSteps": ["..."] }. Do NOT use markdown ticks.`;
+        const prompt = `Translate the following English learning report to Turkish. English Report: ${reportText}. CRITICAL: Please return ONLY a valid JSON object with the same structure, translated to Turkish: { "strengths": ["..."], "weakAreas": [ { "topic": "...", "explanation": "...", "recommendations": ["..."] } ], "overallRecommendations": ["..."], "nextSteps": ["..."] }. Do NOT use markdown ticks.`;
         return await this.makeRequest(prompt, 'json');
     }
 
