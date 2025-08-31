@@ -71,9 +71,35 @@ class GeminiService {
         return await this.makeRequest(prompt, 'json');
     }
 
-    async generateLearningReport(answers, questions) {
+async generateLearningReport(answers, questions) {
         const analysis = this.analyzeAnswers(answers, questions);
-        const prompt = `Analyze the following English test results. Test Data: - Score: ${analysis.correctAnswers}/${analysis.totalQuestions}, Estimated Level: ${analysis.estimatedLevel}. Return ONLY a valid JSON object. Do NOT use markdown like \`\`\`json. Your response must start with { and end with }. Exact JSON structure: { "level": "...", "levelDescription": "...", "strengths": [...], "weakAreas": [ { "topic": "...", ... } ], "overallRecommendations": [...], "nextSteps": [...] }`;
+        
+        // --- DAHA BASİT VE DAHA KATI HALE GETİRİLMİŞ RAPOR İSTEĞİ (PROMPT) ---
+        const prompt = `
+        Analyze these English test results:
+        - Score: ${analysis.correctAnswers}/${analysis.totalQuestions}
+        - Level: ${analysis.estimatedLevel}
+        - Mistakes by Topic: ${Object.entries(analysis.mistakesByTopic).map(([topic, data]) => `- ${topic}: ${data.wrong}/${data.total}`).join('; ')}
+
+        CRITICAL INSTRUCTION:
+        Your entire response MUST be ONLY a single, valid JSON object.
+        Do NOT add any text before or after the JSON object.
+        Do NOT use markdown like \`\`\`json.
+        Your response must start with { and end with }.
+
+        Use this EXACT JSON structure. Fill the string values. Do not add new keys.
+        {
+          "level": "${analysis.estimatedLevel}",
+          "levelDescription": "A detailed description of the ${analysis.estimatedLevel} proficiency level.",
+          "strengths": ["One or two key strengths based on the analysis."],
+          "weakAreas": [
+            {
+              "topic": "The most important topic to improve",
+              "explanation": "A simple explanation of why mistakes might have occurred in this topic.",
+              "recommendations": ["A single, actionable recommendation for this topic."]
+            }
+          ]
+        }`;
         return await this.makeRequest(prompt, 'json');
     }
 
