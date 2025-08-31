@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>English Proficiency Test</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="style.css" rel="stylesheet">
+</head>
+<body>
+    <div id="app">
+        <!-- Homepage -->
+        <div id="homepage" class="screen active">
+            <div class="container-fluid vh-100 d-flex align-items-center justify-content-center">
+                <div class="text-center">
+                    <div class="hero-icon mb-4">
+                        <i class="fas fa-graduation-cap text-primary"></i>
+                    </div>
+                    <h1 class="display-4 fw-bold mb-4">English Proficiency Test</h1>
+                    <p class="lead mb-5 text-muted">
+                        Discover your English level with our adaptive AI-powered assessment.<br>
+                        Complete 30 questions designed to accurately evaluate your skills.
+                    </p>
+                    <button id="startTestBtn" class="btn btn-primary btn-lg px-5 py-3">
+                        <i class="fas fa-play me-2"></i>Start Test
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading Screen -->
+        <div id="loadingScreen" class="screen">
+            <div class="container-fluid vh-100 d-flex align-items-center justify-content-center">
+                <div class="text-center">
+                    <div class="spinner-border text-primary mb-4" role="status" style="width: 3rem; height: 3rem;">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <h3 id="loadingTitle" class="mb-3">Preparing Your Test</h3>
+                    <p id="loadingMessage" class="text-muted">Our AI is generating personalized questions for you...</p>
+                    <div class="progress mt-4" style="width: 300px; margin: 0 auto;">
+                        <div id="loadingProgress" class="progress-bar progress-bar-striped progress-bar-animated" 
+                             role="progressbar" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Test Interface -->
+        <div id="testScreen" class="screen">
+            <div class="container-fluid">
+                <!-- Header -->
+                <nav class="navbar navbar-expand-lg navbar-light bg-light border-bottom">
+                    <div class="container">
+                        <span class="navbar-brand mb-0 h1">
+                            <i class="fas fa-graduation-cap text-primary me-2"></i>
+                            English Proficiency Test
+                        </span>
+                        <div class="d-flex align-items-center">
+                            <span class="badge bg-primary me-3">
+                                Question <span id="currentQuestionNum">1</span> of <span id="totalQuestions">30</span>
+                            </span>
+                            <div class="progress me-3" style="width: 200px; height: 8px;">
+                                <div id="testProgress" class="progress-bar" role="progressbar" style="width: 0%"></div>
+                            </div>
+                            <button id="cancelExamBtn" class="btn btn-outline-danger btn-sm">
+                                <i class="fas fa-times me-1"></i>Cancel Exam
+                            </button>
+                        </div>
+                    </div>
+                </nav>
+
+                <!-- Question Content -->
+                <div class="container py-4">
+                    <div class="row justify-content-center">
+                        <div class="col-lg-8">
+                            <div class="card shadow-sm">
+                                <div class="card-body p-4">
+                                    <!-- Question Type Badge -->
+                                    <div class="mb-3">
+                                        <span id="questionTypeBadge" class="badge bg-secondary">Grammar</span>
+                                        <span id="difficultyBadge" class="badge bg-info ms-2">A1</span>
+                                    </div>
+
+                                    <!-- Reading Passage (for comprehension questions) -->
+                                    <div id="readingPassage" class="reading-passage mb-4" style="display: none;">
+                                        <h5>Reading Passage:</h5>
+                                        <div id="passageText" class="border p-3 bg-light rounded"></div>
+                                    </div>
+
+                                    <!-- Question -->
+                                    <div id="questionContainer">
+                                        <h4 id="questionText" class="mb-4"></h4>
+                                        
+                                        <!-- Multiple Choice Options -->
+                                        <div id="optionsContainer" class="d-grid gap-2">
+                                            <!-- Options will be dynamically generated -->
+                                        </div>
+                                    </div>
+
+                                    <!-- Navigation -->
+                                    <div class="d-flex justify-content-between mt-4 pt-3 border-top">
+                                        <button id="prevBtn" class="btn btn-outline-secondary" disabled>
+                                            <i class="fas fa-arrow-left me-2"></i>Previous
+                                        </button>
+                                        <button id="nextBtn" class="btn btn-primary" disabled>
+                                            Next<i class="fas fa-arrow-right ms-2"></i>
+                                        </button>
+                                        <button id="finishBtn" class="btn btn-success" style="display: none;">
+                                            <i class="fas fa-check me-2"></i>Finish Test
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Screen -->
+        <div id="resultsScreen" class="screen">
+            <div class="container py-5">
+                <div class="row justify-content-center">
+                    <div class="col-lg-8">
+                        <!-- Score Summary -->
+                        <div class="card shadow-sm mb-4">
+                            <div class="card-body text-center p-5">
+                                <div class="mb-4">
+                                    <i class="fas fa-trophy text-warning" style="font-size: 4rem;"></i>
+                                </div>
+                                <h2 class="mb-3">Test Complete!</h2>
+                                <div class="row text-center mb-4">
+                                    <div class="col-md-4">
+                                        <h3 id="finalScore" class="text-primary">0/30</h3>
+                                        <p class="text-muted">Total Score</p>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <h3 id="proficiencyLevel" class="text-success">A1</h3>
+                                        <p class="text-muted">Proficiency Level</p>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <h3 id="accuracyPercentage" class="text-info">0%</h3>
+                                        <p class="text-muted">Accuracy</p>
+                                    </div>
+                                </div>
+                                <div id="levelDescription" class="alert alert-info">
+                                    <!-- Level description will be populated -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Detailed Analysis -->
+                        <div class="card shadow-sm mb-4">
+                            <div class="card-header">
+                                <h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Performance Analysis</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row mb-4">
+                                    <div class="col-md-6">
+                                        <h6>Grammar Questions</h6>
+                                        <div class="progress mb-2">
+                                            <div id="grammarProgress" class="progress-bar bg-primary" role="progressbar"></div>
+                                        </div>
+                                        <small id="grammarScore" class="text-muted">0/25 correct</small>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6>Reading Comprehension</h6>
+                                        <div class="progress mb-2">
+                                            <div id="readingProgress" class="progress-bar bg-success" role="progressbar"></div>
+                                        </div>
+                                        <small id="readingScore" class="text-muted">0/5 correct</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Learning Report -->
+                        <div class="card shadow-sm mb-4">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0"><i class="fas fa-lightbulb me-2"></i>Learning Report</h5>
+                                <button id="translateToTurkishBtn" class="btn btn-outline-info btn-sm">
+                                    <i class="fas fa-language me-1"></i>Türkçe Görüntüle
+                                </button>
+                            </div>
+                            <div class="card-body">
+                                <div id="learningReport">
+                                    <!-- Learning report will be populated -->
+                                </div>
+                                <div id="turkishLearningReport" style="display: none;">
+                                    <!-- Turkish translation will be populated here -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Actions -->
+                        <div class="text-center">
+                            <button id="tryAgainBtn" class="btn btn-primary btn-lg me-3">
+                                <i class="fas fa-redo me-2"></i>Try Again
+                            </button>
+                            <button id="homeBtn" class="btn btn-outline-secondary btn-lg">
+                                <i class="fas fa-home me-2"></i>Home
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Error Screen -->
+        <div id="errorScreen" class="screen">
+            <div class="container-fluid vh-100 d-flex align-items-center justify-content-center">
+                <div class="text-center">
+                    <div class="mb-4">
+                        <i class="fas fa-exclamation-triangle text-warning" style="font-size: 4rem;"></i>
+                    </div>
+                    <h3 class="mb-3">Oops! Something went wrong</h3>
+                    <div id="errorMessage" class="alert alert-danger mb-4">
+                        Unable to connect to the test service. Please check your internet connection and try again.
+                    </div>
+                    <button id="retryBtn" class="btn btn-primary me-3">
+                        <i class="fas fa-retry me-2"></i>Try Again
+                    </button>
+                    <button id="backHomeBtn" class="btn btn-outline-secondary">
+                        <i class="fas fa-home me-2"></i>Back to Home
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // API key configuration
+        // Priority: URL parameter > localStorage > fallback
+        const urlParams = new URLSearchParams(window.location.search);
+        const apiKeyFromUrl = urlParams.get('apiKey');
+        const apiKeyFromStorage = localStorage.getItem('gemini_api_key');
+        
+        if (apiKeyFromUrl) {
+            window.GEMINI_API_KEY = apiKeyFromUrl;
+            localStorage.setItem('gemini_api_key', apiKeyFromUrl);
+        } else if (apiKeyFromStorage) {
+            window.GEMINI_API_KEY = apiKeyFromStorage;
+        } else {
+            // For development/demo - replace with your actual key
+            window.GEMINI_API_KEY = 'AIzaSyA29yB-NhWWJdcrf6dkl5Xeye_3VzJlSIY';
+        }
+    </script>
+    <script src="static-test.js"></script>
+    <script src="gemini-service.js"></script>
+    <script src="evaluation.js"></script>
+    <script src="test-engine.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
