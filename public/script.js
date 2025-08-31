@@ -43,7 +43,8 @@ class EnglishTestApp {
         document.getElementById('backHomeBtn').addEventListener('click', () => this.goHome());
 
         // Keyboard navigation
-        document.addEventListener('keydown', (e) => this.handleKeyboardNavigation(e));
+        // YENİ HALİ
+        document.addEventListener('keydown', this.handleKeyboardNavigation.bind(this));
     }
 
     /**
